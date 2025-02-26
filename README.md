@@ -7,7 +7,7 @@ Yadiko School Management
 Clone the project
 
 ```bash
-  https://github.com/nmdsolution/Yadiko.git
+  https://github.com/nmdsolution/Yadiko.git](https://github.com/nmdsolution/SchoolManagement.git)
 ```
 
 Go to the project directory
