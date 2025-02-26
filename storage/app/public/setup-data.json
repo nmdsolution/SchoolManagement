@@ -1,0 +1,167 @@
+{
+  "mediums": [
+    {
+      "code": "ANGLO",
+      "name": "Anglophone"
+    },
+    {
+      "code": "FRANCO",
+      "name": "Francophone"
+    }
+  ],
+  "sections": [
+    {
+      "code": "GEN",
+      "name": "General"
+    },
+    {
+      "code": "BIL",
+      "name": "Bilingual"
+    },
+    {
+      "code": "TVEE",
+      "name": "Technical and Vocational Education"
+    }
+  ],
+  "cycles": [
+    {
+      "code": "FIR",
+      "name": "First Cycle"
+    },
+    {
+      "code": "SEC",
+      "name": "Second Cycle"
+    },
+    {
+      "code": "ART",
+      "name": "Arts"
+    },
+    {
+      "code": "SCI",
+      "name": "Science"
+    },
+    {
+      "code": "TVEE",
+      "name": "Technical and Vocational Education"
+    }
+  ],
+  "classes": {
+    "ANGLO": {
+      "FIR": [
+        {
+          "name": "Form 1",
+          "abbr": "F1"
+        },
+        {
+          "name": "Form 2",
+          "abbr": "F2"
+        },
+        {
+          "name": "Form 3",
+          "abbr": "F3"
+        },
+        {
+          "name": "Form 4",
+          "abbr": "F4"
+        },
+        {
+          "name": "Form 5",
+          "abbr": "F5"
+        }
+      ],
+      "SEC": [
+        {
+          "name": "Lower Sixth",
+          "abbr": "L6"
+        },
+        {
+          "name": "Upper Sixth",
+          "abbr": "U6"
+        }
+      ],
+      "ART": [
+        {
+          "name": "Lower Sixth",
+          "abbr": "L6"
+        },
+        {
+          "name": "Upper Sixth",
+          "abbr": "U6"
+        }
+      ],
+      "SCI": [
+        {
+          "name": "Lower Sixth",
+          "abbr": "L6"
+        },
+        {
+          "name": "Upper Sixth",
+          "abbr": "U6"
+        }
+      ]
+    },
+    "FRANCO": {
+      "FIR": [
+        {
+          "name": "Sixieme",
+          "abbr": "6eme"
+        },
+        {
+          "name": "Cinquieme",
+          "abbr": "5eme"
+        },
+        {
+          "name": "Quatrieme",
+          "abbr": "4eme"
+        },
+        {
+          "name": "Troisieme",
+          "abbr": "3eme"
+        }
+      ],
+      "SEC": [
+        {
+          "name": "Seconde",
+          "abbr": "2nd"
+        },
+        {
+          "name": "Premier",
+          "abbr": "1er"
+        },
+        {
+          "name": "Terminale",
+          "abbr": "Tle"
+        }
+      ]
+    }
+  },
+  "group_system": {
+    "ALPHA": [
+      "A", "B", "C", "D", "E", "F", "G", "H"
+    ],
+    "COORD" : [
+      "North", "Middle", "South"
+    ],
+    "SERIES": {
+      "ART" : [
+        "A1", "A2", "A3", "A4", "A5"
+      ],
+      "SCI" : [
+        "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8"
+      ],
+      "SEC": [
+        "A1", "A2", "A3", "A4", "A5",
+        "B", "C", "D", "E", 
+        "F1", "F2", "F3", "F4-BA", "F4-BE", "F4-TP", 
+        "F5", "F7-BIOCH", "F7-BIOLO", "F8",
+        "G1", "G2", "G3", 
+        "N1", "N2",
+        "FEA", "TI", "ACA", "ACC",
+        "CG", "FIG", "SES"
+      ],
+      "TVEE": [
+        "ACC", "HEC", "MKT", "SAC", "TIMS"
+      ]
+    }
+  }
+}

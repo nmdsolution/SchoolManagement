@@ -1,0 +1,20 @@
+@php
+    $url = route('medium.show', [1]);
+    $columns = [
+        'ID'=>['dataField'=>'id'],
+        'No'=>['dataField'=>'no'],
+        'Name'=>['dataField'=>'name'],
+        'Created At'=>['dataField'=>'created_at'],
+        'Updated At'=>['dataField'=>'updated_at','dataVisible'=>false],
+    ];
+    $actionColumn = [
+        'editButton'=>['url'=>url('medium'),'customClass'=>'btn-danger'],
+        'deleteButton'=>['url'=>url('medium'),'customClass'=>'btn-danger'],
+        'customButton'=>[
+            ['iconClass'=>'feather-eye','url'=>url('medium'),'customClass'=>'btn-danger','title'=>'View Button'],
+            ['iconClass'=>'feather-circle','url'=>url('medium'),'customClass'=>'btn-info bg-success-light']
+        ],
+        'dataEvents'=>'mediumEvents'
+    ];
+@endphp
+<x-bootstrap-table :url=$url :columns=$columns :actionColumn=$actionColumn></x-bootstrap-table>
