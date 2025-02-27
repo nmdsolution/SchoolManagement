@@ -117,8 +117,8 @@
             width: 100%;
             opacity: 0.3;
             margin-top: 5rem;
-
         }
+
         .footer {
             bottom: 60px;
             width: 90%;
@@ -126,89 +126,50 @@
             margin-right: 5%;
             font-weight: 600;
         }
-        
-        
     </style>
 </head>
 
 <body>
-    @foreach ($exam_report_detail as $exam_report)
-        <div class="content">
-            <div class="header">
-                <div class="school-name">
-                    <h1>{{ $school_name }}</h1>
-                </div>
-                @if(file_exists(public_path('storage/'.$school_logo)) && is_file(public_path('storage/'.$school_logo)))
+@foreach ($exam_report_detail as $exam_report)
+    <div class="content">
+        <div class="header">
+            @if(file_exists(public_path('storage/'.$school_logo)) && is_file(public_path('storage/'.$school_logo)))
                 <div class="logo">
                     <img src="{{ public_path('storage/' . $school_logo) }}"
-                        alt="" height="500">
-                        
+                         alt="" height="500">
                 </div>
-                @endif
-
-                <div class="title">
-                    <h1>{{ __('STUDENT HONOR ROLL CERTIFICATE') }}</h1>
-                </div>
-            </div>
-
-            <div class="body">
-                <div class="certify">
-                    {{ __('This is certify that') }}
-                </div>
-                <div class="student-name" style="font-size: 40px; margin-top: 2rem">
-                    {{ $exam_report->student->user->full_name }}
-                </div>
-                <div class="main-body" style="font-size: 20px">
-                    @if ($student_honor_roll_text)
-                        {{ $student_honor_roll_text['student_honor_roll_text'] }}
-                    @else
-                    a dedicated and diligent student, has earned a well-deserved place on the Honor Roll. Throughout the academic year, [he/she] consistently exhibited exceptional commitment to academic excellence and demonstrated an impressive work ethic. [His/Her] outstanding performance in [specific subjects or courses] reflects [his/her] unwavering dedication to learning and growth. [His/Her] exemplary behavior, both inside and outside the classroom, sets a positive example for peers and showcases [his/her] strong character and leadership qualities. It is with great pride and admiration that we award this Honor Roll certificate in recognition of [his/her] remarkable achievements and commitment to excellence. Congratulations on this well-earned accomplishment!    
-                    @endif
-                    
-                </div>
-                <div class="student-detail" style="margin-top: 2rem;">
-                    <table class="student-detail-table">
-                        <tr>
-                            <th>{{ __('session_years') }} : </th>
-                            <td>{{ $exam_report->exam_report->session_year->name }}</td>
-                            <th>{{ __('Term') }} : </th>
-                            <td>{{ $exam_report->exam_report->exam_term->name }}</td>
-                        </tr>
-                        <tr>
-                            <th>{{__('class_section')}} : </th>
-                            <td>{{ $exam_report->student->class_section->class->name }} -
-                                {{ $exam_report->student->class_section->section->name }}</td>
-                            <th>{{ __('Rank') }} : </th>
-                            <td>{{ $exam_report->rank }}</td>
-                        </tr>
-                        <tr>
-                            <th>{{__('Average')}} : </th>
-                            <td>{{ $exam_report->avg }} / 20</td>
-                            <th></th>
-                            <td></td>
-                        </tr>
-                    </table>
-                </div>
-                {{-- Student name, Class section, Term, Average, Rank, Session Year --}}
-            </div>
-            <div class="footer" style="font-zise: 18px;">
-                <div class="date">
-                    <div class="date-line">
-
-                    </div>
-                    {{ __('date') }}
-                </div>
-                <div class="signature">
-                    <div class="signature-line">
-
-                    </div>
-                    {{ __('Signature') }}
-                </div>
-            </div>
-            
+            @endif
         </div>
-    @endforeach
 
+        <div class="body">
+
+            <div class="main-body" style="font-size: 20px">
+                @php
+                    $certificate_text = $template_data['certificate_text'] ?? '';
+
+                    // Replace shortcodes with actual values
+                    $replacements = [
+                        '{{school_logo}}' => '',
+                        '{{school_name}}' => $school_name,
+                        '{{student_name}}' => $exam_report->student->user->full_name,
+                        '{{session_year}}' => $exam_report->exam_report->session_year->name,
+                        '{{exam_term}}' => $exam_report->exam_report->exam_term->name,
+                        '{{class_section}}' => $exam_report->student->class_section->class->name . ' - ' . $exam_report->student->class_section->section->name,
+                        '{{rank}}' => $exam_report->rank,
+                        '{{avg}}' => $exam_report->avg
+                    ];
+
+                    foreach ($replacements as $shortcode => $value) {
+                        $certificate_text = str_replace($shortcode, $value, $certificate_text);
+                    }
+                @endphp
+
+                {!! $certificate_text !!}
+            </div>
+
+        </div>
+
+    </div>
+@endforeach
 </body>
-
 </html>

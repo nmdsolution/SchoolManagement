@@ -2195,34 +2195,100 @@ class ExamController extends Controller
 
     }
 
-    public function student_honor_roll_certificate(Request $request)
-    {
+   // Modified method to show the template editor
+// In your controller method (student_honor_roll_certificate)
+public function student_honor_roll_certificate(Request $request)
+{
+    $request->validate([
+        'exam_report_id' => 'required'
+    ],[
+        'exam_report_id.required' => trans('please_select_records')
+    ]);
 
-        $request->validate([
-            'exam_report_id' => 'required'
-        ],[
-            'exam_report_id.required' => trans('please_select_records')
-        ]);
+    // Get the default honor roll text from settings
+    $student_honor_roll_text = getSettings('student_honor_roll_text');
+    $honor_roll_text = isset($student_honor_roll_text['student_honor_roll_text'])
+        ? $student_honor_roll_text['student_honor_roll_text']
+        : 'a dedicated and diligent student, has earned a well-deserved place on the Honor Roll. Throughout the academic year, [he/she] consistently exhibited exceptional commitment to academic excellence and demonstrated an impressive work ethic. [His/Her] outstanding performance in [specific subjects or courses] reflects [his/her] unwavering dedication to learning and growth. [His/Her] exemplary behavior, both inside and outside the classroom, sets a positive example for peers and showcases [his/her] strong character and leadership qualities. It is with great pride and admiration that we award this Honor Roll certificate in recognition of [his/her] remarkable achievements and commitment to excellence. Congratulations on this well-earned accomplishment!';
 
-        $school_logo = Settings::where('type', 'report_header_logo')->where('center_id', get_center_id())->currentMedium()->first();
-        $school_logo = $school_logo->getRawOriginal('message');
-        
+    // Fetch sample data from first student record for preview
+    $exam_report_id = explode(",", $request->exam_report_id);
+    $sample_record = ExamReportClassDetails::where('id', $exam_report_id[0])->with(['student.user', 'student.class_section.class', 'student.class_section.section', 'exam_report.session_year', 'exam_report.exam_term'])->first();
 
-        $school_name = getSettings('school_name');
-        $school_name = $school_name['school_name'];
-
-        $student_honor_roll_text = getSettings('student_honor_roll_text');
-
-
-        // return $request->all();
-        $exam_report_id = explode(",", $request->exam_report_id);
-
-        $exam_report_detail = ExamReportClassDetails::whereIn('id',$exam_report_id)->get();
-
-        $pdf = PDF::loadView('students.honor_roll_certificate', compact('school_logo', 'school_name','exam_report_detail','student_honor_roll_text'));
-        $pdf->setPaper('A4', 'landscape');
-        return $pdf->stream();
+    // Create sample data display
+    $sample_data = '';
+    if ($sample_record) {
+        $sample_data = '<div class="mb-4 p-3 bg-light border">';
+        $sample_data .= '<h5>Sample Record Data (First Selected Student):</h5>';
+        $sample_data .= '<table class="table table-sm table-bordered">';
+        $sample_data .= '<tr><th>Shortcode</th><th>Value</th></tr>';
+        $sample_data .= '<tr><td><code>{{school_name}}</code></td><td>' . getSettings('school_name')['school_name'] . '</td></tr>';
+        $sample_data .= '<tr><td><code>{{student_name}}</code></td><td>' . $sample_record->student->user->full_name . '</td></tr>';
+        $sample_data .= '<tr><td><code>{{session_year}}</code></td><td>' . $sample_record->exam_report->session_year->name . '</td></tr>';
+        $sample_data .= '<tr><td><code>{{exam_term}}</code></td><td>' . $sample_record->exam_report->exam_term->name . '</td></tr>';
+        $sample_data .= '<tr><td><code>{{class_section}}</code></td><td>' . $sample_record->student->class_section->class->name . ' - ' . $sample_record->student->class_section->section->name . '</td></tr>';
+        $sample_data .= '<tr><td><code>{{rank}}</code></td><td>' . $sample_record->rank . '</td></tr>';
+        $sample_data .= '<tr><td><code>{{avg}}</code></td><td>' . $sample_record->avg . '</td></tr>';
+        $sample_data .= '</table>';
+        $sample_data .= '</div>';
     }
+
+    // Pass the exam report IDs to the template editor along with sample data
+    return view('students.honor_roll_template_editor', [
+        'exam_report_ids' => $request->exam_report_id,
+        'honor_roll_text' => $honor_roll_text,
+        'sample_data' => $sample_data
+    ]);
+}
+// New method to generate the final certificates after template editing
+public function generate_honor_roll_certificates(Request $request)
+{
+    $request->validate([
+        'exam_report_id' => 'required',
+        'certificate_title' => 'required',
+        'certificate_heading' => 'required',
+        'certificate_text' => 'required'
+    ]);
+
+    // Get school information
+    $school_logo = Settings::where('type', 'report_header_logo')->where('center_id', get_center_id())->currentMedium()->first();
+    $school_logo = $school_logo->getRawOriginal('message');
+
+    $school_name = getSettings('school_name');
+    $school_name = $school_name['school_name'];
+
+    // Save the template as default if requested
+    if($request->has('save_as_default')) {
+        Settings::updateOrCreate(
+            ['type' => 'student_honor_roll_text', 'center_id' => get_center_id()],
+            ['message' => ['student_honor_roll_text' => $request->certificate_text]]
+        );
+    }
+
+    // Get template form data
+    $template_data = [
+        'certificate_title' => $request->certificate_title,
+        'certificate_heading' => $request->certificate_heading,
+        'certificate_text' => $request->certificate_text,
+        'date_label' => $request->date_label,
+        'signature_label' => $request->signature_label
+    ];
+
+    // Get exam report details
+    $exam_report_id = explode(",", $request->exam_report_id);
+    $exam_report_detail = ExamReportClassDetails::whereIn('id', $exam_report_id)->get();
+
+    // Generate PDF with the customized template
+    $pdf = PDF::loadView('students.honor_roll_certificate', compact(
+        'school_logo',
+        'school_name',
+        'exam_report_detail',
+        'template_data'
+    ));
+
+    $pdf->setPaper('A4', 'landscape');
+    return $pdf->stream();
+}
 
     public function sequentialShow(Request $request): \Illuminate\Http\Response|JsonResponse|Redirector|RedirectResponse|Application|\Illuminate\Contracts\Routing\ResponseFactory
     {

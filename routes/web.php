@@ -491,6 +491,9 @@ Route::group(['middleware' => ['Role', 'auth:sanctum']], static function () {
         Route::get('honor-roll-student-list/{report_id}', [ExamController::class, 'honor_roll_student_list']);
         Route::get('student-honor-roll-file/{id}', [ExamController::class, 'honor_roll_certificate']);
         Route::post('students/honor-roll-certificates', [ExamController::class, 'student_honor_roll_certificate']);
+        // New route for generating certificates after template editing
+        Route::post('students/generate-honor-roll-certificates', [ExamController::class, 'generate_honor_roll_certificates']);
+
 
         Route::get('annual-master-sheet', [ClassSchoolController::class, 'annual_report'])->name('annual-master-sheets');
         Route::get('list-annual-master-sheet', [ClassSchoolController::class, 'list_annual_reports'])->name('annual-report-list');
