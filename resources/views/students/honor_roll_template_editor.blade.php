@@ -10,11 +10,25 @@
             <div class="col-md-12 grid-margin stretch-card">
                 <div class="card">
                     <div class="card-body">
-                        <h4 class="card-title">{{ __('Honor Roll Certificate Template Editor') }}</h4>
-                        <p class="card-description">
-                            {{ __('Edit the certificate template before generating PDFs') }}
-                        </p>
-
+                        <div class="card-body d-flex justify-content-between align-items-center">
+                            <div>
+                                <h4 class="card-title">{{ __('Honor Roll Certificate Template Editor') }}</h4>
+                                <p class="card-description">
+                                    {{ __('Edit the certificate template before generating PDFs') }}
+                                </p>
+                            </div>
+                            <!-- Move template selector here -->
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <select class="form-control" id="existing_templates">
+                                        <option value="">{{ __('Load Template') }}</option>
+                                        @foreach($templates as $template)
+                                            <option value="{{ $template->id }}">{{ $template->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                         <form action="{{ url('students/generate-honor-roll-certificates') }}" method="post" enctype="multipart/form-data">
                             @csrf
                             <input type="hidden" name="exam_report_id" value="{{ $exam_report_ids }}">
@@ -24,6 +38,7 @@
                                     <div class="form-group">
                                         <label for="template_name">{{ __('Name') }} <span class="text-danger">*</span></label>
                                         <input type="text" class="form-control" id="template_name" name="template_name" placeholder="Name" required>
+
                                     </div>
                                 </div>
 
@@ -92,6 +107,8 @@
                                         <label for="background_image">{{ __('Background Image') }}</label>
                                         <div class="input-group">
                                             <input type="text" class="form-control" id="thumbnail" name="thumbnail" placeholder="Thumbnail" readonly>
+
+                                            <input type="hidden" id="background_image_data" name="background_image_data">
                                             <div class="input-group-append">
                                                 <button class="btn btn-primary" type="button" id="upload_button">{{ __('Upload') }}</button>
                                                 <input type="file" name="background_image" id="background_image" style="display: none;">
@@ -174,6 +191,8 @@
                                 <button type="submit" class="btn btn-primary">{{ __('Generate Certificates') }}</button>
                                 <a href="{{ url('honor-roll') }}" class="btn btn-secondary ml-2">{{ __('Cancel') }}</a>
                             </div>
+                            <!-- Add this hidden field before the form closing tag -->
+                            <input type="hidden" id="template_data_json" name="template_data_json">
                         </form>
                     </div>
                 </div>
@@ -317,7 +336,105 @@
 
                 return formatted;
             }
+            // Add this to your document ready function
+            $('#existing_templates').on('change', function() {
+                const templateId = $(this).val();
+                if (!templateId) return;
 
+                // Load template data via AJAX
+                $.ajax({
+                    url: '/students/load-certificate-template/' + templateId,
+                    type: 'GET',
+                    success: function(response) {
+                        // Populate form fields
+                        $('#template_name').val(response.name);
+                        $(`input[name="certificate_type"][value="${response.type}"]`).prop('checked', true);
+                        $('#page_layout').val(response.page_layout);
+                        $('#height').val(response.height);
+                        $('#width').val(response.width);
+                        $('#user_image_shape').val(response.user_image_shape);
+                        $('#image_size').val(response.image_size);
+                        $('#certificate_title').val(response.certificate_title);
+                        $('#certificate_heading').val(response.certificate_heading);
+                        $('#thumbnail').val(response.background_image);
+
+                        // Update editors
+                        tinymce.get('tinymce-visual-editor').setContent(response.certificate_text);
+                        codeMirrorEditor.setValue(response.certificate_text);
+
+                        // If background image exists, display it
+                        if (response.background_image_path) {
+                            const editorBody = tinymce.get('tinymce-visual-editor').getBody();
+                            $(editorBody).css({
+                                'background-image': `url(/${response.background_image_path})`,
+                                'background-size': 'cover',
+                                'background-position': 'center',
+                                'background-repeat': 'no-repeat'
+                            });
+                        }
+                    },
+                    error: function(error) {
+                        console.error('Error loading template:', error);
+                        alert('Error loading template. Please try again.');
+                    }
+                });
+            });
+// Handle background image display in TinyMCE
+            $('#background_image').on('change', function() {
+                const file = this.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        // Update TinyMCE editor with background image
+                        const editor = tinymce.get('tinymce-visual-editor');
+                        const editorBody = editor.getBody();
+
+                        // Set background image on the editor
+                        $(editorBody).css({
+                            'background-image': `url(${e.target.result})`,
+                            'background-size': 'cover',
+                            'background-position': 'center',
+                            'background-repeat': 'no-repeat'
+                        });
+
+                        // Store the background image data for form submission
+                        $('#background_image_data').val(e.target.result);
+
+                        // Update filename display
+                        const fileName = $('#background_image').val().split('\\').pop();
+                        $('#thumbnail').val(fileName || 'Thumbnail');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+// Handle background image display in TinyMCE
+            $('#background_image').on('change', function() {
+                const file = this.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        // Update TinyMCE editor with background image
+                        const editor = tinymce.get('tinymce-visual-editor');
+                        const editorBody = editor.getBody();
+
+                        // Set background image on the editor
+                        $(editorBody).css({
+                            'background-image': `url(${e.target.result})`,
+                            'background-size': 'cover',
+                            'background-position': 'center',
+                            'background-repeat': 'no-repeat'
+                        });
+
+                        // Store the background image data for form submission
+                        $('#background_image_data').val(e.target.result);
+
+                        // Update filename display
+                        const fileName = $('#background_image').val().split('\\').pop();
+                        $('#thumbnail').val(fileName || 'Thumbnail');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
             // Shortcode insertion for Visual Editor
             $('#shortcode-help-btn-visual').on('click', function() {
                 $('#shortcodeModal').modal('show');
@@ -380,7 +497,8 @@
                 win.document.close();
             }
 
-            // Form submission - update hidden textarea
+
+            // Form submission - update hidden textarea and save all template data
             $('form').on('submit', function() {
                 // Get content based on which tab is active
                 if ($('#visual-tab').hasClass('active')) {
@@ -404,6 +522,24 @@
                 } catch (e) {
                     console.error("Error extracting title/heading:", e);
                 }
+
+                // Make sure we're storing the complete template including all HTML elements
+                const templateData = {
+                    template_name: $('#template_name').val(),
+                    certificate_type: $('input[name="certificate_type"]:checked').val(),
+                    page_layout: $('#page_layout').val(),
+                    height: $('#height').val(),
+                    width: $('#width').val(),
+                    user_image_shape: $('#user_image_shape').val(),
+                    image_size: $('#image_size').val(),
+                    certificate_title: $('#certificate_title').val(),
+                    certificate_heading: $('#certificate_heading').val(),
+                    certificate_text: $('#certificate_text').val(),
+                    background_image: $('#thumbnail').val()
+                };
+
+                // Store complete template data as JSON in a hidden field
+                $('#template_data_json').val(JSON.stringify(templateData));
             });
         });
     </script>

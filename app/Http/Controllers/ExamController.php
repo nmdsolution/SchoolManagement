@@ -24,6 +24,7 @@ use App\Http\Requests\Exam\UpdateExamRequest;
 use App\Http\Requests\Exam\UpdateExamResultMarksRequest;
 use App\Http\Requests\StoreGradeRequest;
 use App\Models\AnnualReport;
+use App\Models\CertificateTemplate;
 use App\Models\ClassGroup;
 use App\Models\ClassSchool;
 use App\Models\ClassSection;
@@ -2195,8 +2196,6 @@ class ExamController extends Controller
 
     }
 
-   // Modified method to show the template editor
-// In your controller method (student_honor_roll_certificate)
 public function student_honor_roll_certificate(Request $request)
 {
     $request->validate([
@@ -2209,44 +2208,29 @@ public function student_honor_roll_certificate(Request $request)
     $student_honor_roll_text = getSettings('student_honor_roll_text');
     $honor_roll_text = isset($student_honor_roll_text['student_honor_roll_text'])
         ? $student_honor_roll_text['student_honor_roll_text']
-        : 'a dedicated and diligent student, has earned a well-deserved place on the Honor Roll. Throughout the academic year, [he/she] consistently exhibited exceptional commitment to academic excellence and demonstrated an impressive work ethic. [His/Her] outstanding performance in [specific subjects or courses] reflects [his/her] unwavering dedication to learning and growth. [His/Her] exemplary behavior, both inside and outside the classroom, sets a positive example for peers and showcases [his/her] strong character and leadership qualities. It is with great pride and admiration that we award this Honor Roll certificate in recognition of [his/her] remarkable achievements and commitment to excellence. Congratulations on this well-earned accomplishment!';
+        : 'Default honor roll text...';
 
-    // Fetch sample data from first student record for preview
-    $exam_report_id = explode(",", $request->exam_report_id);
-    $sample_record = ExamReportClassDetails::where('id', $exam_report_id[0])->with(['student.user', 'student.class_section.class', 'student.class_section.section', 'exam_report.session_year', 'exam_report.exam_term'])->first();
+    // Get existing templates
+    $templates = CertificateTemplate::where('type', 'student')
+        ->where('center_id', get_center_id())
+        ->orderBy('is_default', 'desc')
+        ->orderBy('created_at', 'desc')
+        ->get();
 
-    // Create sample data display
-    $sample_data = '';
-    if ($sample_record) {
-        $sample_data = '<div class="mb-4 p-3 bg-light border">';
-        $sample_data .= '<h5>Sample Record Data (First Selected Student):</h5>';
-        $sample_data .= '<table class="table table-sm table-bordered">';
-        $sample_data .= '<tr><th>Shortcode</th><th>Value</th></tr>';
-        $sample_data .= '<tr><td><code>{{school_name}}</code></td><td>' . getSettings('school_name')['school_name'] . '</td></tr>';
-        $sample_data .= '<tr><td><code>{{student_name}}</code></td><td>' . $sample_record->student->user->full_name . '</td></tr>';
-        $sample_data .= '<tr><td><code>{{session_year}}</code></td><td>' . $sample_record->exam_report->session_year->name . '</td></tr>';
-        $sample_data .= '<tr><td><code>{{exam_term}}</code></td><td>' . $sample_record->exam_report->exam_term->name . '</td></tr>';
-        $sample_data .= '<tr><td><code>{{class_section}}</code></td><td>' . $sample_record->student->class_section->class->name . ' - ' . $sample_record->student->class_section->section->name . '</td></tr>';
-        $sample_data .= '<tr><td><code>{{rank}}</code></td><td>' . $sample_record->rank . '</td></tr>';
-        $sample_data .= '<tr><td><code>{{avg}}</code></td><td>' . $sample_record->avg . '</td></tr>';
-        $sample_data .= '</table>';
-        $sample_data .= '</div>';
-    }
-
-    // Pass the exam report IDs to the template editor along with sample data
+    // Pass the exam report IDs to the template editor
     return view('students.honor_roll_template_editor', [
         'exam_report_ids' => $request->exam_report_id,
         'honor_roll_text' => $honor_roll_text,
-        'sample_data' => $sample_data
+        'templates' => $templates
     ]);
 }
-// New method to generate the final certificates after template editing
+
+// Update the generate_honor_roll_certificates method
 public function generate_honor_roll_certificates(Request $request)
 {
     $request->validate([
         'exam_report_id' => 'required',
-        'certificate_title' => 'required',
-        'certificate_heading' => 'required',
+        'template_name' => 'required|string|max:255',
         'certificate_text' => 'required'
     ]);
 
@@ -2257,21 +2241,59 @@ public function generate_honor_roll_certificates(Request $request)
     $school_name = getSettings('school_name');
     $school_name = $school_name['school_name'];
 
-    // Save the template as default if requested
-    if($request->has('save_as_default')) {
+    // Handle background image upload if present
+    $background_image_path = null;
+    if ($request->hasFile('background_image')) {
+        $background_image = $request->file('background_image');
+        $background_image_name = time() . '.' . $background_image->getClientOriginalExtension();
+        $background_image->move(public_path('uploads/certificates'), $background_image_name);
+        $background_image_path = 'uploads/certificates/' . $background_image_name;
+    }
+
+    // Save the template
+    $is_default = $request->has('save_as_default') ? true : false;
+
+    // If setting as default, reset other defaults
+    if ($is_default) {
+        CertificateTemplate::where('type', $request->certificate_type)
+            ->where('center_id', get_center_id())
+            ->update(['is_default' => false]);
+
+        // Also save to settings for backward compatibility
         Settings::updateOrCreate(
             ['type' => 'student_honor_roll_text', 'center_id' => get_center_id()],
             ['message' => ['student_honor_roll_text' => $request->certificate_text]]
         );
     }
 
-    // Get template form data
+    // Create or update the template
+    $template = CertificateTemplate::updateOrCreate(
+        [
+            'name' => $request->template_name,
+            'center_id' => get_center_id()
+        ],
+        [
+            'type' => $request->certificate_type,
+            'page_layout' => $request->page_layout,
+            'height' => $request->height,
+            'width' => $request->width,
+            'user_image_shape' => $request->user_image_shape,
+            'image_size' => $request->image_size,
+            'certificate_title' => $request->certificate_title,
+            'certificate_heading' => $request->certificate_heading,
+            'certificate_text' => $request->certificate_text,
+            'background_image' => $request->thumbnail,
+            'background_image_path' => $background_image_path,
+            'is_default' => $is_default
+        ]
+    );
+
+    // Get template data
     $template_data = [
         'certificate_title' => $request->certificate_title,
         'certificate_heading' => $request->certificate_heading,
         'certificate_text' => $request->certificate_text,
-        'date_label' => $request->date_label,
-        'signature_label' => $request->signature_label
+        'background_image_path' => $background_image_path
     ];
 
     // Get exam report details
@@ -2286,10 +2308,41 @@ public function generate_honor_roll_certificates(Request $request)
         'template_data'
     ));
 
-    $pdf->setPaper('A4', 'landscape');
+    // Set PDF paper size based on template settings
+    $orientation = (strpos($request->page_layout, 'landscape') !== false) ? 'landscape' : 'portrait';
+    $paper_size = (strpos($request->page_layout, 'a4') !== false) ? 'a4' : 'letter';
+
+    $pdf->setPaper($paper_size, $orientation);
     return $pdf->stream();
 }
 
+// Add a new method to load existing templates
+public function load_certificate_template($id = null)
+{
+    if ($id) {
+        $template = CertificateTemplate::findOrFail($id);
+    } else {
+        // Get default template
+        $template = CertificateTemplate::where('type', 'student')
+            ->where('is_default', true)
+            ->where('center_id', get_center_id())
+            ->first();
+
+        if (!$template) {
+            // Fallback to settings
+            $student_honor_roll_text = getSettings('student_honor_roll_text');
+            $honor_roll_text = isset($student_honor_roll_text['student_honor_roll_text'])
+                ? $student_honor_roll_text['student_honor_roll_text']
+                : 'Default honor roll text...';
+
+            return response()->json([
+                'certificate_text' => $honor_roll_text
+            ]);
+        }
+    }
+
+    return response()->json($template);
+}
     public function sequentialShow(Request $request): \Illuminate\Http\Response|JsonResponse|Redirector|RedirectResponse|Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         if (!Auth::user()->can('list-sequential-exam')) {
