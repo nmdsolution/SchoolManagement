@@ -2248,6 +2248,38 @@ public function generate_honor_roll_certificates(Request $request)
         $background_image_name = time() . '.' . $background_image->getClientOriginalExtension();
         $background_image->move(public_path('uploads/certificates'), $background_image_name);
         $background_image_path = 'uploads/certificates/' . $background_image_name;
+    } elseif ($request->filled('background_image_data')) {
+        // Handle base64 image data if provided
+        try {
+            $image_data = $request->background_image_data;
+            if (preg_match('/^data:image\/(\w+);base64,/', $image_data, $type)) {
+                $image_data = substr($image_data, strpos($image_data, ',') + 1);
+                $type = strtolower($type[1]); // jpg, png, gif
+
+                if (!in_array($type, ['jpg', 'jpeg', 'png', 'gif'])) {
+                    throw new \Exception('Invalid image type');
+                }
+
+                $image_data = str_replace(' ', '+', $image_data);
+                $image_data = base64_decode($image_data);
+
+                if ($image_data === false) {
+                    throw new \Exception('Base64 decode failed');
+                }
+            } else {
+                throw new \Exception('Invalid image data format');
+            }
+
+            $image_name = time() . '.' . $type;
+            $path = 'uploads/certificates/' . $image_name;
+
+            file_put_contents(public_path($path), $image_data);
+            $background_image_path = $path;
+
+        } catch (\Exception $e) {
+            // Log error but continue
+            \Log::error('Error processing background image: ' . $e->getMessage());
+        }
     }
 
     // Save the template
@@ -2264,6 +2296,14 @@ public function generate_honor_roll_certificates(Request $request)
             ['type' => 'student_honor_roll_text', 'center_id' => get_center_id()],
             ['message' => ['student_honor_roll_text' => $request->certificate_text]]
         );
+    }
+
+    // If we're using an existing template, load the background image path
+    if (!$background_image_path && $request->existing_template_id) {
+        $existingTemplate = CertificateTemplate::find($request->existing_template_id);
+        if ($existingTemplate && $existingTemplate->background_image_path) {
+            $background_image_path = $existingTemplate->background_image_path;
+        }
     }
 
     // Create or update the template
@@ -2288,7 +2328,7 @@ public function generate_honor_roll_certificates(Request $request)
         ]
     );
 
-    // Get template data
+    // Prepare template data
     $template_data = [
         'certificate_title' => $request->certificate_title,
         'certificate_heading' => $request->certificate_heading,
@@ -2300,22 +2340,47 @@ public function generate_honor_roll_certificates(Request $request)
     $exam_report_id = explode(",", $request->exam_report_id);
     $exam_report_detail = ExamReportClassDetails::whereIn('id', $exam_report_id)->get();
 
+    // Configure wkhtmltopdf options - enhanced for background images
+    $options = [
+        'enable-local-file-access' => true,
+        'images' => true,
+        'enable-javascript' => true,
+        'javascript-delay' => 1000,
+        'no-stop-slow-scripts' => true,
+        'debug-javascript' => true,
+        'background' => true,
+        'encoding' => 'UTF-8',
+        'user-style-sheet' => public_path('css/certificate.css'),
+        'margin-top' => 0,
+        'margin-right' => 0,
+        'margin-bottom' => 0,
+        'margin-left' => 0,
+        'disable-smart-shrinking' => true,
+        'zoom' => 1.0,
+        'dpi' => 300
+    ];
+
+    // Set the base URL for resources
+    $baseUrl = url('/');
+
     // Generate PDF with the customized template
     $pdf = PDF::loadView('students.honor_roll_certificate', compact(
         'school_logo',
         'school_name',
         'exam_report_detail',
-        'template_data'
-    ));
+        'template_data',
+        'baseUrl'
+    ))->setOptions($options);
 
     // Set PDF paper size based on template settings
     $orientation = (strpos($request->page_layout, 'landscape') !== false) ? 'landscape' : 'portrait';
     $paper_size = (strpos($request->page_layout, 'a4') !== false) ? 'a4' : 'letter';
 
     $pdf->setPaper($paper_size, $orientation);
-    return $pdf->stream();
-}
 
+    // Stream the PDF directly to the browser
+    return $pdf->stream('honor_roll_certificates.pdf');
+}
 // Add a new method to load existing templates
 public function load_certificate_template($id = null)
 {

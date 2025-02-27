@@ -1,174 +1,102 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Honor Roll</title>
+    <title>Honor Roll Certificate</title>
     <style>
-        .content {
-            border: 1px solid black;
-            height: 870px;
+        @page {
+            margin: 0;
+            padding: 0;
+            background-image: url("{{ public_path($template_data['background_image_path']) }}");
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
         }
-
-        .header {
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
             width: 100%;
-            height: 140px;
-            text-align: center;
-            margin-top: -10px;
+            height: 100%;
         }
-
-        .title {
-            font-size: 14px;
-        }
-
-        .body {
-            text-align: center;
-            margin-top: 2rem;
-            height: 600px;
-        }
-
-        .certify {
-            font-weight: 700;
-            font-size: 30px;
-        }
-
-        .school-name {
-            font-size: 20px;
-            text-transform: uppercase;
-            margin-bottom: 3rem;
-        }
-
-        .student-name {
-            font-size: '50px';
-            margin-top: 1rem;
-            font-weight: bold;
-            margin-left: 10%;
-            margin-right: 10%;
-            border-bottom: 1px solid black;
-        }
-
-        .main-body {
-            margin: 0 10%;
-            margin-top: 1rem;
-            line-height: 2rem;
-            font-size: 18px;
-        }
-
-        .student-detail-table {
-            font-size: 20px;
-            margin-top: 2rem;
-            width: 70%;
-            margin-left: 15%;
-            margin-right: 15%;
-        }
-
-        table,
-        th,
-        td {
-            border-collapse: collapse;
-            line-height: 2rem;
-        }
-
-        table td {
-            text-align: left;
-        }
-
-        .footer-table {
-            width: 90%;
-            margin-left: 5%;
-            margin-right: 5%;
-            margin-top: 10rem;
-            font-weight: 600;
-        }
-
-        .date {
-            position: absolute;
-            margin-left: 10%;
-        }
-
-        .date-line {
-            border-top: 1px solid black;
-            width: 130px;
-            margin-left: -48px;
-            margin-bottom: 0.5rem;
-        }
-
-        .signature {
-            position: absolute;
-            margin-left: 73%;
-        }
-
-        .signature-line {
-            border-top: 1px solid black;
-            width: 130px;
-            margin-left: -30px;
-            margin-bottom: 0.5rem;
-        }
-
-        .page-break {
+        .certificate-container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
             page-break-after: always;
         }
-
-        .logo {
-            position: absolute;
-            text-align: center;
+        /* Preserve all styles from the editor */
+        .certificate-content {
+            position: relative;
+            z-index: 1;
+            padding: 20px;
             width: 100%;
-            opacity: 0.3;
-            margin-top: 5rem;
+            box-sizing: border-box;
         }
-
-        .footer {
-            bottom: 60px;
-            width: 90%;
-            margin-left: 5%;
-            margin-right: 5%;
-            font-weight: 600;
+        /* Additional styles to ensure editor content is preserved */
+        .certificate-content h1,
+        .certificate-content h2,
+        .certificate-content h3,
+        .certificate-content h4,
+        .certificate-content h5,
+        .certificate-content h6,
+        .certificate-content p,
+        .certificate-content div,
+        .certificate-content table {
+            margin: inherit;
+            padding: inherit;
+            font-family: inherit;
+            font-size: inherit;
+            text-align: inherit;
+            line-height: inherit;
+            color: inherit;
+        }
+        /* Ensure images are displayed correctly */
+        .certificate-content img {
+            max-width: 100%;
+            height: auto;
         }
     </style>
 </head>
-
 <body>
 @foreach ($exam_report_detail as $exam_report)
-    <div class="content">
-        <div class="header">
-            @if(file_exists(public_path('storage/'.$school_logo)) && is_file(public_path('storage/'.$school_logo)))
-                <div class="logo">
-                    <img src="{{ public_path('storage/' . $school_logo) }}"
-                         alt="" height="500">
-                </div>
-            @endif
-        </div>
-
-        <div class="body">
-
-            <div class="main-body" style="font-size: 20px">
-                @php
-                    $certificate_text = $template_data['certificate_text'] ?? '';
-
-                    // Replace shortcodes with actual values
-                    $replacements = [
-                        '{{school_logo}}' => '',
-                        '{{school_name}}' => $school_name,
-                        '{{student_name}}' => $exam_report->student->user->full_name,
-                        '{{session_year}}' => $exam_report->exam_report->session_year->name,
-                        '{{exam_term}}' => $exam_report->exam_report->exam_term->name,
-                        '{{class_section}}' => $exam_report->student->class_section->class->name . ' - ' . $exam_report->student->class_section->section->name,
-                        '{{rank}}' => $exam_report->rank,
-                        '{{avg}}' => $exam_report->avg
-                    ];
-
-                    foreach ($replacements as $shortcode => $value) {
-                        $certificate_text = str_replace($shortcode, $value, $certificate_text);
-                    }
-                @endphp
-
-                {!! $certificate_text !!}
+    <div class="certificate-container">
+        <!-- Alternative background method as a fallback -->
+        @if(isset($template_data['background_image_path']) && !empty($template_data['background_image_path']))
+            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;">
+                <img src="{{ public_path($template_data['background_image_path']) }}" style="width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0;">
             </div>
+        @endif
 
+        <div class="certificate-content">
+            @php
+                $certificate_text = $template_data['certificate_text'] ?? '';
+
+                // Replace shortcodes with actual values
+                $replacements = [
+                    '{{school_logo}}' => file_exists(public_path('storage/'.$school_logo)) && is_file(public_path('storage/'.$school_logo))
+                        ? '<img src="' . public_path('storage/' . $school_logo) . '" alt="School Logo" style="max-height: 100px;">'
+                        : '',
+                    '{{school_name}}' => $school_name,
+                    '{{student_name}}' => $exam_report->student->user->full_name,
+                    '{{session_year}}' => $exam_report->exam_report->session_year->name,
+                    '{{exam_term}}' => $exam_report->exam_report->exam_term->name,
+                    '{{class_section}}' => $exam_report->student->class_section->class->name . ' - ' . $exam_report->student->class_section->section->name,
+                    '{{rank}}' => $exam_report->rank,
+                    '{{avg}}' => $exam_report->avg
+                ];
+
+                // Process all replacements
+                foreach ($replacements as $shortcode => $value) {
+                    $certificate_text = str_replace($shortcode, $value, $certificate_text);
+                }
+            @endphp
+
+            {!! $certificate_text !!}
         </div>
-
     </div>
 @endforeach
 </body>
