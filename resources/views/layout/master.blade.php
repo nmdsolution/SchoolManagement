@@ -68,20 +68,6 @@
                 showErrorToast(event.detail.message);
             });
         });
-        $(document).ready(function() {
-            // Function to show notifications
-            function showNotification(message, type = 'success') {
-                Swal.fire({
-                    title: type.charAt(0).toUpperCase() + type.slice(1),
-                    text: message,
-                    icon: type,
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 0,
-                    timerProgressBar: true
-                });
-            }
 
     </script>
     </body>

@@ -703,6 +703,9 @@
                                 <li><a href="{{ url('users/') }}"> {{ __('user') }}</a></li>
                             @endcan
 
+                                    <li><a href="{{ url('students/class-report') }}"> {{ __('Template Setting') }}</a></li>
+                                @endcan
+
                             @canany(['role-create', 'role-list', 'role-edit', 'role-delete'])
                                 <li><a href="{{ url('roles/') }}"> {{ __('role_permission') }}</a></li>
                             @endcan

@@ -2224,9 +2224,31 @@ public function student_honor_roll_certificate(Request $request)
         'templates' => $templates
     ]);
 }
+public function destroyTemplate($id)
+{
+    try {
+        $template = CertificateTemplate::findOrFail($id);
 
-// Update the generate_honor_roll_certificates method
-public function generate_honor_roll_certificates(Request $request)
+        // Optional: Remove background image file if exists
+        if ($template->background_image_path && file_exists(public_path($template->background_image_path))) {
+            unlink(public_path($template->background_image_path));
+        }
+
+        $template->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Template deleted successfully'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Error deleting template: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+public function save_certificate_template(Request $request)
 {
     $request->validate([
         'exam_report_id' => 'required',
@@ -2322,42 +2344,54 @@ public function generate_honor_roll_certificates(Request $request)
             'certificate_title' => $request->certificate_title,
             'certificate_heading' => $request->certificate_heading,
             'certificate_text' => $request->certificate_text,
+            'custom_css' => $request->custom_css,
             'background_image' => $request->thumbnail,
             'background_image_path' => $background_image_path,
-            'is_default' => $is_default
+            'is_default' => $is_default,
+            'content_scale' => $request->filled('content_scale') ? floatval($request->content_scale) : 1.0
         ]
     );
 
-    // Prepare template data
+    // Extract and apply content scaling if provided
+    $content_scale = $request->filled('content_scale') ? floatval($request->content_scale) : 1.0;
+
+    // Prepare template data - ensure it matches exactly what's in preview
     $template_data = [
         'certificate_title' => $request->certificate_title,
         'certificate_heading' => $request->certificate_heading,
         'certificate_text' => $request->certificate_text,
-        'background_image_path' => $background_image_path
+        'background_image_path' => $background_image_path,
+        'width' => $request->width,
+        'height' => $request->height,
+        'content_scale' => $content_scale
     ];
 
     // Get exam report details
     $exam_report_id = explode(",", $request->exam_report_id);
     $exam_report_detail = ExamReportClassDetails::whereIn('id', $exam_report_id)->get();
 
-    // Configure wkhtmltopdf options - enhanced for background images
+    // Configure wkhtmltopdf options to match preview exactly
+    $width_mm = $request->width;
+    $height_mm = $request->height;
+
+    // Configure wkhtmltopdf options for exact preview matching
     $options = [
         'enable-local-file-access' => true,
         'images' => true,
         'enable-javascript' => true,
         'javascript-delay' => 1000,
         'no-stop-slow-scripts' => true,
-        'debug-javascript' => true,
         'background' => true,
         'encoding' => 'UTF-8',
-        'user-style-sheet' => public_path('css/certificate.css'),
         'margin-top' => 0,
         'margin-right' => 0,
         'margin-bottom' => 0,
         'margin-left' => 0,
-        'disable-smart-shrinking' => true,
+        'disable-smart-shrinking' => true, // Critical for size matching
         'zoom' => 1.0,
-        'dpi' => 300
+        'dpi' => 300,
+        'page-width' => $width_mm . 'mm',
+        'page-height' => $height_mm . 'mm'
     ];
 
     // Set the base URL for resources
@@ -2372,11 +2406,92 @@ public function generate_honor_roll_certificates(Request $request)
         'baseUrl'
     ))->setOptions($options);
 
-    // Set PDF paper size based on template settings
-    $orientation = (strpos($request->page_layout, 'landscape') !== false) ? 'landscape' : 'portrait';
-    $paper_size = (strpos($request->page_layout, 'a4') !== false) ? 'a4' : 'letter';
+    // Return a success response instead of streaming the PDF
+    return response()->json([
+        'success' => true,
+        'message' => 'Certificate template saved successfully',
+        'template_id' => $template->id
+    ]);
+}
+// Method to generate PDF only
+public function generate_honor_roll_certificates(Request $request)
+{
+    $request->validate([
+        'exam_report_id' => 'required',
+        'certificate_text' => 'required'
+    ]);
 
-    $pdf->setPaper($paper_size, $orientation);
+    // Get school information
+    $school_logo = Settings::where('type', 'report_header_logo')->where('center_id', get_center_id())->currentMedium()->first();
+    $school_logo = $school_logo->getRawOriginal('message');
+
+    $school_name = getSettings('school_name');
+    $school_name = $school_name['school_name'];
+
+    // Use the background image path from form or existing template
+    $background_image_path = null;
+    if ($request->filled('background_image_data')) {
+        $background_image_path = $request->background_image_data;
+    } elseif ($request->existing_template_id) {
+        $existingTemplate = CertificateTemplate::find($request->existing_template_id);
+        if ($existingTemplate && $existingTemplate->background_image_path) {
+            $background_image_path = $existingTemplate->background_image_path;
+        }
+    }
+
+    // Extract and apply content scaling if provided
+    $content_scale = $request->filled('content_scale') ? floatval($request->content_scale) : 1.0;
+
+    // Prepare template data - ensure it matches exactly what's in preview
+    $template_data = [
+        'certificate_title' => $request->certificate_title,
+        'certificate_heading' => $request->certificate_heading,
+        'certificate_text' => $request->certificate_text,
+        'background_image_path' => $background_image_path,
+        'width' => $request->width,
+        'height' => $request->height,
+        'content_scale' => $content_scale
+    ];
+
+    // Get exam report details
+    $exam_report_id = explode(",", $request->exam_report_id);
+    $exam_report_detail = ExamReportClassDetails::whereIn('id', $exam_report_id)->get();
+
+    // Configure wkhtmltopdf options to match preview exactly
+    $width_mm = $request->width;
+    $height_mm = $request->height;
+
+    // Configure wkhtmltopdf options for exact preview matching
+    $options = [
+        'enable-local-file-access' => true,
+        'images' => true,
+        'enable-javascript' => true,
+        'javascript-delay' => 1000,
+        'no-stop-slow-scripts' => true,
+        'background' => true,
+        'encoding' => 'UTF-8',
+        'margin-top' => 0,
+        'margin-right' => 0,
+        'margin-bottom' => 0,
+        'margin-left' => 0,
+        'disable-smart-shrinking' => true, // Critical for size matching
+        'zoom' => 1.0,
+        'dpi' => 300,
+        'page-width' => $width_mm . 'mm',
+        'page-height' => $height_mm . 'mm'
+    ];
+
+    // Set the base URL for resources
+    $baseUrl = url('/');
+
+    // Generate PDF with the customized template
+    $pdf = PDF::loadView('students.honor_roll_certificate', compact(
+        'school_logo',
+        'school_name',
+        'exam_report_detail',
+        'template_data',
+        'baseUrl'
+    ))->setOptions($options);
 
     // Stream the PDF directly to the browser
     return $pdf->stream('honor_roll_certificates.pdf');
@@ -2408,6 +2523,7 @@ public function load_certificate_template($id = null)
 
     return response()->json($template);
 }
+
     public function sequentialShow(Request $request): \Illuminate\Http\Response|JsonResponse|Redirector|RedirectResponse|Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         if (!Auth::user()->can('list-sequential-exam')) {
