@@ -35,7 +35,7 @@ return [
 
     'pdf' => [
         'enabled' => true,
-        //'binary' => base_path('vendor/bin/wkhtmltopdf-amd64'),
+        'binary' => base_path('vendor/bin/wkhtmltopdf-amd64'),
          'binary' => '"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf"',
         'timeout' => false,
         'options' => [],
